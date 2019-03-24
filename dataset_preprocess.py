@@ -8,9 +8,9 @@ def log_to_csv(log_file):
     output_csv_file = open(csv_file, 'w')
 
     csv_header = 'date,time,s-ip,cs-method,cs-uri-stem,cs-uri-query,s-port,cs-username,c-ip,cs(User-Agent),' \
-                 'cs(Referer),sc-status,sc-substatus,sc-win32-status,time-taken\n'
+                 'cs(Referer),sc-status,sc-substatus,sc-win32-status,time-taken'
 
-    output_csv_file.write(csv_header)  # Write header to first row of the file.
+    output_csv_file.write(csv_header + '\n')  # Write header to first row of the file.
 
     count_comment = 0
     count_log = 0
@@ -75,6 +75,44 @@ def select_features_in_csv(csv_file, selected_features):
     processed_csv_file.close()
 
 
+def extract_user_ids(csv_file, ip_column, user_agent_column):
+    unprocessed_csv_file = open(csv_file, 'r')
+    unprocessed_csv_file.__next__()  # pass csv
+
+    my_set = set()
+    users_dict = {}
+    users_dict_count = 0
+    for line in unprocessed_csv_file:
+        tmp_list = line[+1:-2].split(__csv_delimiter__)
+        a_tuple = (tmp_list[ip_column], tmp_list[user_agent_column])
+        if not my_set.__contains__(a_tuple):
+            my_set.add(a_tuple)
+            users_dict[a_tuple] = users_dict_count
+            users_dict_count += 1
+    unprocessed_csv_file.close()
+    return users_dict
+
+
+def write_user_ids(csv_file, ip_column, user_agent_column, users_dict):
+    print('----------------------------')
+    unprocessed_csv_file = open(csv_file, 'r')
+    processed_csv_file = open(csv_file.replace('.csv', '[USERS].csv'), 'w')
+
+    csv_header = unprocessed_csv_file.__next__()
+    new_csv_header = csv_header[:-1] + ',' + 'user_id' + '\n'
+    processed_csv_file.write(new_csv_header)  # Write new header to first row of the file.
+
+    for line in unprocessed_csv_file:
+        tmp_list = line[+1:-2].split(__csv_delimiter__)
+        a_tuple = (tmp_list[ip_column], tmp_list[user_agent_column])
+
+        user_id = users_dict.get(a_tuple)
+        new_line = line[:-2] + __csv_delimiter__ + str(user_id) + '\"\n'
+        processed_csv_file.write(new_line)
+    unprocessed_csv_file.close()
+    processed_csv_file.close()
+
+
 def main():
     text_dir_path = 'TextFiles'
     # log_file_name = 'u_extend15.log'
@@ -82,9 +120,13 @@ def main():
     # csv_file_name = 'u_extend15[CSV].csv'
     # clean_bots_from_csv('%s/%s' % (text_dir_path, csv_file_name), 9)
 
-    csv_file_name = 'u_extend15[CSV][NotBots].csv'
-    selected_features = [0, 1, 4, 8, 9, 10]
-    select_features_in_csv('%s/%s' % (text_dir_path, csv_file_name), selected_features)
+    # csv_file_name = 'u_extend15[CSV][NotBots].csv'
+    # selected_features = [0, 1, 4, 8, 9, 10]
+    # select_features_in_csv('%s/%s' % (text_dir_path, csv_file_name), selected_features)
+
+    csv_file_name = 'u_extend15[CSV][NotBots][SF].csv'
+    users_dict = extract_user_ids('%s/%s' % (text_dir_path, csv_file_name), 3, 4)
+    write_user_ids('%s/%s' % (text_dir_path, csv_file_name), 3, 4, users_dict)
     exit(0)
 
 
