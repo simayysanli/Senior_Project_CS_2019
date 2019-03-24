@@ -79,14 +79,14 @@ def extract_user_ids(csv_file, ip_column, user_agent_column):
     unprocessed_csv_file = open(csv_file, 'r')
     unprocessed_csv_file.__next__()  # pass csv
 
-    my_set = set()
-    users_dict = {}
+    users_set = set() # Set of tuple_of_ip_and_user-agent
+    users_dict = {} # key = tuple_of_ip_and_user-agent & value = user_id
     users_dict_count = 0
     for line in unprocessed_csv_file:
         tmp_list = line[+1:-2].split(__csv_delimiter__)
         a_tuple = (tmp_list[ip_column], tmp_list[user_agent_column])
-        if not my_set.__contains__(a_tuple):
-            my_set.add(a_tuple)
+        if not users_set.__contains__(a_tuple):
+            users_set.add(a_tuple)
             users_dict[a_tuple] = users_dict_count
             users_dict_count += 1
     unprocessed_csv_file.close()
@@ -94,7 +94,6 @@ def extract_user_ids(csv_file, ip_column, user_agent_column):
 
 
 def write_user_ids(csv_file, ip_column, user_agent_column, users_dict):
-    print('----------------------------')
     unprocessed_csv_file = open(csv_file, 'r')
     processed_csv_file = open(csv_file.replace('.csv', '[USERS].csv'), 'w')
 
