@@ -37,7 +37,6 @@ def clean_bots_from_csv(csv_file, user_agent_column):
     csv_header = unprocessed_csv_file.__next__()
     processed_csv_file.write(csv_header)  # Write header to first row of the file.
 
-    # next(unprocessed_csv_file)  # Pass the csv header which is first row.
     for line in unprocessed_csv_file:
         user_agent = line.split(__csv_delimiter__)[user_agent_column]
 
@@ -49,12 +48,43 @@ def clean_bots_from_csv(csv_file, user_agent_column):
     processed_csv_file.close()
 
 
+def select_features_in_csv(csv_file, selected_features):
+    new_csv_file = csv_file.replace('.csv', '[SF].csv')
+    unprocessed_csv_file = open(csv_file, 'r')
+
+    processed_csv_file = open(new_csv_file, 'w')
+
+    csv_header = unprocessed_csv_file.__next__()
+    list_header_items = csv_header[:-1].split(',')
+
+    tmp_str = ''
+    for column in selected_features:
+        tmp_str += list_header_items[column] + ','
+    tmp_str = tmp_str[:-1] + '\n'
+    processed_csv_file.write(tmp_str)
+
+    for line in unprocessed_csv_file:
+        list_header_items = line[1:-2].split(__csv_delimiter__)
+        tmp_str = ''
+        for column in selected_features:
+            tmp_str += list_header_items[column] + __csv_delimiter__
+
+        tmp_str = tmp_str[:-__csv_delimiter__.__len__()] + '\"\n'
+        processed_csv_file.write('\"' + tmp_str)
+    unprocessed_csv_file.close()
+    processed_csv_file.close()
+
+
 def main():
     text_dir_path = 'TextFiles'
     # log_file_name = 'u_extend15.log'
     # log_to_csv('%s/%s' % (text_dir_path, log_file_name))
-    csv_file_name = 'u_extend15[CSV].csv'
-    clean_bots_from_csv('%s/%s' % (text_dir_path, csv_file_name), 9)
+    # csv_file_name = 'u_extend15[CSV].csv'
+    # clean_bots_from_csv('%s/%s' % (text_dir_path, csv_file_name), 9)
+
+    csv_file_name = 'u_extend15[CSV][NotBots].csv'
+    selected_features = [0, 1, 4, 8, 9, 10]
+    select_features_in_csv('%s/%s' % (text_dir_path, csv_file_name), selected_features)
     exit(0)
 
 
