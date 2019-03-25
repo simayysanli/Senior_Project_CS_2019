@@ -102,7 +102,8 @@ def extract_user_ids(csv_file, ip_col, user_agent_col):
 
 def write_user_ids(csv_file, ip_col, user_agent_col, users_dict):
     unprocessed_csv_file = open(csv_file, 'r')
-    processed_csv_file = open(csv_file.replace('.csv', '[USERS].csv'), 'w')
+    new_csv_file = csv_file.replace('.csv', '[USERS].csv')
+    processed_csv_file = open(new_csv_file, 'w')
 
     csv_header = unprocessed_csv_file.__next__()
     new_csv_header = 'user_id' + __csv_sep__ + csv_header
@@ -118,6 +119,7 @@ def write_user_ids(csv_file, ip_col, user_agent_col, users_dict):
         processed_csv_file.write(new_line)
     unprocessed_csv_file.close()
     processed_csv_file.close()
+    print('Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
 
 
 def main():
