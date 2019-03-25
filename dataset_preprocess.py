@@ -1,5 +1,7 @@
+import pandas as pd
+
 __csv_sep__ = '|'  # csv separator
-__text_dir__ = 'TextFiles'  # Directory of text files
+__text_dir__ = 'TextFiles/'  # Directory of text files
 
 
 def list_to_csv_line(a_list):  # Concatenates items of a list by using csv separator
@@ -40,7 +42,7 @@ def log_to_csv(log_file):
 
     print('INFO: %d out of %d log-rows converted to csv format.' % (count_log, count_log + count_comment))
     print('INFO: %d out of %d comment-rows have been omitted.' % (count_comment, count_log + count_comment))
-    print('Function has successfully terminated and new file named \'%s\' created.' % output_csv_file)
+    print('Function has successfully terminated and new file named \'%s\' created.' % csv_file)
 
 
 def clean_bots_from_csv(csv_file, user_agent_col):
@@ -114,7 +116,7 @@ def write_user_ids(csv_file, ip_col, user_agent_col, users_dict):
         a_tuple = (tmp_list[ip_col], tmp_list[user_agent_col])
 
         user_id = users_dict.get(a_tuple)
-        user_id = str("{:08d}".format(user_id))
+        user_id = str('{:08d}'.format(user_id))
         new_line = user_id + __csv_sep__ + line
         processed_csv_file.write(new_line)
     unprocessed_csv_file.close()
@@ -122,22 +124,34 @@ def write_user_ids(csv_file, ip_col, user_agent_col, users_dict):
     print('Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
 
 
+def sort_csv_by_header(csv_file, header_item):
+    df = pd.read_csv(csv_file, sep=__csv_sep__)
+    df = df.sort_values(header_item)
+
+    new_csv_file = csv_file.replace('.csv', '[SORTED].csv')
+    df.to_csv(new_csv_file, index=False, sep=__csv_sep__)
+
+    print('Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
+
+
 def main():
-    # log_file_name = 'u_extend15.log'
-    # log_to_csv('%s/%s' % (__text_dir__, log_file_name))
     ##########################################################################################
-    # csv_file_name = 'u_extend15[CSV].csv'
-    # clean_bots_from_csv(__text_dir__ + '/' + csv_file_name, user_agent_col=9)
+    log_file_name = 'u_extend15.log'
+    log_to_csv(__text_dir__ + log_file_name)
     ##########################################################################################
-    # csv_file_name = 'u_extend15[CSV][NoBots].csv'
-    # selected_features = [0, 1, 4, 8, 9, 10]
-    # select_features_in_csv('%s/%s' % (__text_dir__, csv_file_name), selected_features)
+    csv_file_name = 'u_extend15[CSV].csv'
+    clean_bots_from_csv(__text_dir__ + csv_file_name, user_agent_col=9)
+    ##########################################################################################
+    csv_file_name = 'u_extend15[CSV][NoBots].csv'
+    selected_features = [0, 1, 4, 8, 9, 10]
+    select_features_in_csv(__text_dir__ + csv_file_name, selected_features)
     ##########################################################################################
     csv_file_name = 'u_extend15[CSV][NoBots][SF].csv'
-    users_dict = extract_user_ids('%s/%s' % (__text_dir__, csv_file_name), 3, 4)
-    write_user_ids('%s/%s' % (__text_dir__, csv_file_name), 3, 4, users_dict)
-    exit(0)
+    users_dict = extract_user_ids(__text_dir__+ csv_file_name, 3, 4)
+    write_user_ids(__text_dir__+ csv_file_name, 3, 4, users_dict)
     ##########################################################################################
+    csv_file_name = 'u_extend15[CSV][NoBots][SF][USERS].csv'
+    sort_csv_by_header(__text_dir__ + csv_file_name, 'user_id')
 
 
 if __name__ == '__main__':
