@@ -132,9 +132,6 @@ def sort_csv_by_header(csv_file, header_item1,header_item2):
 
     new_csv_file = csv_file.replace('.csv', '[SORTED].csv')
     df.to_csv(new_csv_file, index=False, sep=__csv_sep__)
-    git
-    add
-    story.txt
     print('Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
 
 def extract_session_ids(csv_file,threshold,time_col,user_id_col):
