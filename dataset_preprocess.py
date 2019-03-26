@@ -1,8 +1,10 @@
 import pandas as pd
+import datetime
+from datetime import timedelta
 
 __csv_sep__ = '|'  # csv separator
 __text_dir__ = 'TextFiles/'  # Directory of text files
-
+threshold=10
 
 def list_to_csv_line(a_list):  # Concatenates items of a list by using csv separator
     line = ''
@@ -124,15 +126,30 @@ def write_user_ids(csv_file, ip_col, user_agent_col, users_dict):
     print('Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
 
 
-def sort_csv_by_header(csv_file, header_item):
+def sort_csv_by_header(csv_file, header_item1,header_item2):
     df = pd.read_csv(csv_file, sep=__csv_sep__)
-    df = df.sort_values(header_item)
+    df = df.sort_values([header_item1, header_item2])
 
     new_csv_file = csv_file.replace('.csv', '[SORTED].csv')
     df.to_csv(new_csv_file, index=False, sep=__csv_sep__)
-
+    git
+    add
+    story.txt
     print('Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
 
+def extract_session_ids(csv_file,threshold,time_col,user_id_col):
+    df = pd.read_csv(csv_file, sep=__csv_sep__,index_col = False)
+    user_id=0
+    i=0
+    j=0
+    session_id_no=0
+    datetimeFormat = '%H:%M:%S'
+    for j in len(df[user_id_col]):
+        for i in df[user_id_col].iloc[j]==user_id:
+            diff = datetime.datetime.strptime(df[time_col].iloc[i+1], datetimeFormat) \
+            - datetime.datetime.strptime(df[time_col].iloc[i], datetimeFormat)
+            print("Seconds:", diff.seconds)
+        user_id+=1
 
 def main():
     ##########################################################################################
@@ -151,7 +168,9 @@ def main():
     write_user_ids(__text_dir__+ csv_file_name, 3, 4, users_dict)
     ##########################################################################################
     csv_file_name = 'u_extend15[CSV][NoBots][SF][USERS].csv'
-    sort_csv_by_header(__text_dir__ + csv_file_name, 'user_id')
+    sort_csv_by_header(__text_dir__ + csv_file_name, 'user_id','time')
+    ##########################################################################################
+    extract_session_ids(__text_dir__ + csv_file_name, threshold, 'time', 'user_id')
 
 
 if __name__ == '__main__':
