@@ -1,10 +1,11 @@
 import pandas as pd
 import datetime
 from datetime import timedelta
+import csv
 
 __csv_sep__ = '|'  # csv separator
-__text_dir__ = 'TextFiles/'  # Directory of text files
-threshold=10
+__text_dir__ = '//home//simay//Desktop//TextFiles/'  # Directory of text files
+threshold=300
 
 def list_to_csv_line(a_list):  # Concatenates items of a list by using csv separator
     line = ''
@@ -134,40 +135,56 @@ def sort_csv_by_header(csv_file, header_item1,header_item2):
     df.to_csv(new_csv_file, index=False, sep=__csv_sep__)
     print('Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
 
-def extract_session_ids(csv_file,threshold,time_col,user_id_col):
+def extract_session_ids(csv_file,threshold,time_col):
     df = pd.read_csv(csv_file, sep=__csv_sep__,index_col = False)
+    countRow=df.shape[0]
+    print('countRow:',countRow)
     user_id=0
-    i=0
-    j=0
+    max_user_id=13617
     session_id_no=0
+    session_id=0
     datetimeFormat = '%H:%M:%S'
-    for j in len(df[user_id_col]):
-        for i in df[user_id_col].iloc[j]==user_id:
+    while user_id<=max_user_id:
+        num=find_user(user_id, countRow, df)
+        for i in range(num):
             diff = datetime.datetime.strptime(df[time_col].iloc[i+1], datetimeFormat) \
             - datetime.datetime.strptime(df[time_col].iloc[i], datetimeFormat)
             print("Seconds:", diff.seconds)
+            if(diff.seconds<threshold):
+                session_id=session_id_no
+            else:
+                session_id+=1
         user_id+=1
+
+def find_user(user_id,countRow,df):
+    count=0
+    for j in range(countRow):
+        if(df['user_id'].iloc[j]==user_id):
+            count += 1
+    #print(count)
+    return count
 
 def main():
     ##########################################################################################
-    log_file_name = 'u_extend15.log'
-    log_to_csv(__text_dir__ + log_file_name)
+    #log_file_name = 'u_extend15.log'
+    #log_to_csv(__text_dir__ + log_file_name)
     ##########################################################################################
-    csv_file_name = 'u_extend15[CSV].csv'
-    clean_bots_from_csv(__text_dir__ + csv_file_name, user_agent_col=9)
+    #csv_file_name = 'u_extend15[CSV].csv'
+    #clean_bots_from_csv(__text_dir__ + csv_file_name, user_agent_col=9)
     ##########################################################################################
-    csv_file_name = 'u_extend15[CSV][NoBots].csv'
-    selected_features = [0, 1, 4, 8, 9, 10]
-    select_features_in_csv(__text_dir__ + csv_file_name, selected_features)
+    #csv_file_name = 'u_extend15[CSV][NoBots].csv'
+    #selected_features = [0, 1, 4, 8, 9, 10]
+    #select_features_in_csv(__text_dir__ + csv_file_name, selected_features)
     ##########################################################################################
-    csv_file_name = 'u_extend15[CSV][NoBots][SF].csv'
-    users_dict = extract_user_ids(__text_dir__+ csv_file_name, 3, 4)
-    write_user_ids(__text_dir__+ csv_file_name, 3, 4, users_dict)
+    #csv_file_name = 'u_extend15[CSV][NoBots][SF].csv'
+    #users_dict = extract_user_ids(__text_dir__ + csv_file_name, 3, 4)
+    #write_user_ids(__text_dir__ + csv_file_name, 3, 4, users_dict)
     ##########################################################################################
-    csv_file_name = 'u_extend15[CSV][NoBots][SF][USERS].csv'
-    sort_csv_by_header(__text_dir__ + csv_file_name, 'user_id','time')
-    ##########################################################################################
-    extract_session_ids(__text_dir__ + csv_file_name, threshold, 'time', 'user_id')
+    #csv_file_name = 'u_extend15[CSV][NoBots][SF][USERS].csv'
+    #sort_csv_by_header(__text_dir__ + csv_file_name, 'user_id', 'time')
+    csv_file_name = 'u_extend15[CSV][NoBots][SF][USERS][SORTED].csv'
+    # sort_csv_by_header(__text_dir__ + csv_file_name, 'user_id','time')
+    extract_session_ids(__text_dir__ + csv_file_name, threshold, 'time')
 
 
 if __name__ == '__main__':
