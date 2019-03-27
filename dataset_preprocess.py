@@ -1,11 +1,12 @@
 import pandas as pd
-import datetime
-from datetime import timedelta
-import csv
+from datetime import datetime
 
 __csv_sep__ = '|'  # csv separator
-__text_dir__ = '//home//simay//Desktop//TextFiles/'  # Directory of text files
-threshold=300
+__text_dir__ = 'TextFiles/'  # Directory of text files
+__time_format__ = '%H:%M:%S'  # 12:26:52
+__date_format__ = '%Y-%m-%d'  # 2018-11-05
+__threshold_secs__ = 10 * 60  # 10 minutes
+
 
 def list_to_csv_line(a_list):  # Concatenates items of a list by using csv separator
     line = ''
@@ -119,72 +120,111 @@ def write_user_ids(csv_file, ip_col, user_agent_col, users_dict):
         a_tuple = (tmp_list[ip_col], tmp_list[user_agent_col])
 
         user_id = users_dict.get(a_tuple)
-        user_id = str('{:08d}'.format(user_id))
-        new_line = user_id + __csv_sep__ + line
+        new_line = str(user_id) + __csv_sep__ + line
         processed_csv_file.write(new_line)
     unprocessed_csv_file.close()
     processed_csv_file.close()
     print('Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
 
 
-def sort_csv_by_header(csv_file, header_item1,header_item2):
+def sort_csv_by_header(csv_file, header_item1, header_item2, header_item3):
     df = pd.read_csv(csv_file, sep=__csv_sep__)
-    df = df.sort_values([header_item1, header_item2])
+    df = df.sort_values([header_item1, header_item2, header_item3])
 
     new_csv_file = csv_file.replace('.csv', '[SORTED].csv')
     df.to_csv(new_csv_file, index=False, sep=__csv_sep__)
     print('Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
 
-def extract_session_ids(csv_file,threshold,time_col):
-    df = pd.read_csv(csv_file, sep=__csv_sep__,index_col = False)
-    countRow=df.shape[0]
-    print('countRow:',countRow)
-    user_id=0
-    max_user_id=13617
-    session_id_no=0
-    session_id=0
-    datetimeFormat = '%H:%M:%S'
-    while user_id<=max_user_id:
-        num=find_user(user_id, countRow, df)
-        for i in range(num):
-            diff = datetime.datetime.strptime(df[time_col].iloc[i+1], datetimeFormat) \
-            - datetime.datetime.strptime(df[time_col].iloc[i], datetimeFormat)
-            print("Seconds:", diff.seconds)
-            if(diff.seconds<threshold):
-                session_id=session_id_no
-            else:
-                session_id+=1
-        user_id+=1
 
-def find_user(user_id,countRow,df):
-    count=0
-    for j in range(countRow):
-        if(df['user_id'].iloc[j]==user_id):
-            count += 1
-    #print(count)
-    return count
+def str_to_time(str_time):
+    return datetime.strptime(str_time, __time_format__)
+
+
+def str_to_date(str_date):
+    return datetime.strptime(str_date, __date_format__)
+
+
+def is_diff_gt_threshold(d2, t2, d1, t1, threshold_secs=__threshold_secs__):
+    secs_diff = abs(str_to_time(t2) - str_to_time(t1)).seconds
+
+    if d1 == d2:  # Same day
+        # print('DIFFERENCE:' + str(secs_diff) + 's')
+        return secs_diff > threshold_secs
+
+    days_diff = (str_to_date(d2) - str_to_date(d1)).days
+
+    if days_diff > 1:
+        # print('DIFFERENCE: TOO LARGE!')
+        return True
+    elif days_diff == 1:
+        secs_in_a_day = 86400
+        secs_diff = secs_in_a_day - secs_diff
+        # print('DIFFERENCE:' + str(secs_diff) + 's')
+        return secs_diff > threshold_secs
+    else:  # days_diff < 0
+        print('ERROR: Wrong date infos for is_diff_bigger_than_threshold function.')
+        exit(-1)
+
+
+def alternate(csv_file, user_id_col, date_col, time_col):
+    unprocessed_csv_file = open(csv_file, 'r')
+    new_csv_file = csv_file.replace('.csv', '[SESSION].csv')
+    processed_csv_file = open(new_csv_file, 'w')
+
+    csv_header = unprocessed_csv_file.__next__()
+    new_csv_header = 'session_id' + __csv_sep__ + csv_header
+    processed_csv_file.write(new_csv_header)  # Write new header to first row of the file.
+
+    old_user_id = 0
+    session_id = 0
+
+    first_line = unprocessed_csv_file.__next__()
+    old_date = line_to_list(first_line)[date_col]
+    old_time = line_to_list(first_line)[time_col]
+    processed_csv_file.write('0' + __csv_sep__ + first_line)
+
+    for line in unprocessed_csv_file:
+        list_items = line_to_list(line)
+        cur_user_id = int(list_items[user_id_col])
+
+        cur_date = list_items[date_col]
+        cur_time = list_items[time_col]
+
+        if cur_user_id != old_user_id or \
+                is_diff_gt_threshold(cur_date, cur_time, old_date, old_time):
+            session_id += 1
+        new_line = str(session_id) + __csv_sep__ + line
+        processed_csv_file.write(new_line)
+
+        old_time = cur_time
+        old_date = cur_date
+        old_user_id = cur_user_id
+
 
 def main():
     ##########################################################################################
-    #log_file_name = 'u_extend15.log'
-    #log_to_csv(__text_dir__ + log_file_name)
+    # log_file_name = 'u_extend15.log'
+    # log_to_csv(__text_dir__ + log_file_name)
     ##########################################################################################
-    #csv_file_name = 'u_extend15[CSV].csv'
-    #clean_bots_from_csv(__text_dir__ + csv_file_name, user_agent_col=9)
+    # csv_file_name = 'u_extend15[CSV].csv'
+    # clean_bots_from_csv(__text_dir__ + csv_file_name, user_agent_col=9)
     ##########################################################################################
-    #csv_file_name = 'u_extend15[CSV][NoBots].csv'
-    #selected_features = [0, 1, 4, 8, 9, 10]
-    #select_features_in_csv(__text_dir__ + csv_file_name, selected_features)
+    # csv_file_name = 'u_extend15[CSV][NoBots].csv'
+    # selected_features = [0, 1, 4, 8, 9, 10]
+    # select_features_in_csv(__text_dir__ + csv_file_name, selected_features)
     ##########################################################################################
-    #csv_file_name = 'u_extend15[CSV][NoBots][SF].csv'
-    #users_dict = extract_user_ids(__text_dir__ + csv_file_name, 3, 4)
-    #write_user_ids(__text_dir__ + csv_file_name, 3, 4, users_dict)
+    # csv_file_name = 'u_extend15[CSV][NoBots][SF].csv'
+    # users_dict = extract_user_ids(__text_dir__ + csv_file_name, 3, 4)
+    # write_user_ids(__text_dir__ + csv_file_name, 3, 4, users_dict)
     ##########################################################################################
-    #csv_file_name = 'u_extend15[CSV][NoBots][SF][USERS].csv'
-    #sort_csv_by_header(__text_dir__ + csv_file_name, 'user_id', 'time')
+    # csv_file_name = 'u_extend15[CSV][NoBots][SF][USERS].csv'
+    # sort_csv_by_header(__text_dir__ + csv_file_name, 'user_id', 'date', 'time')
+    ##########################################################################################
     csv_file_name = 'u_extend15[CSV][NoBots][SF][USERS][SORTED].csv'
+    alternate(__text_dir__ + csv_file_name, user_id_col=0, date_col=1, time_col=2)
+    exit(0)
     # sort_csv_by_header(__text_dir__ + csv_file_name, 'user_id','time')
-    extract_session_ids(__text_dir__ + csv_file_name, threshold, 'time')
+    # extract_session_ids(__text_dir__ + csv_file_name, __threshold_secs__, 'time')
 
 
 if __name__ == '__main__':
