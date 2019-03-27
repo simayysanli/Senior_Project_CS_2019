@@ -166,7 +166,7 @@ def is_diff_gt_threshold(d2, t2, d1, t1, threshold_secs=__threshold_secs__):
         exit(-1)
 
 
-def alternate(csv_file, user_id_col, date_col, time_col):
+def calc_session_ids(csv_file, user_id_col, date_col, time_col):
     unprocessed_csv_file = open(csv_file, 'r')
     new_csv_file = csv_file.replace('.csv', '[SESSION].csv')
     processed_csv_file = open(new_csv_file, 'w')
@@ -221,10 +221,8 @@ def main():
     # sort_csv_by_header(__text_dir__ + csv_file_name, 'user_id', 'date', 'time')
     ##########################################################################################
     csv_file_name = 'u_extend15[CSV][NoBots][SF][USERS][SORTED].csv'
-    alternate(__text_dir__ + csv_file_name, user_id_col=0, date_col=1, time_col=2)
+    calc_session_ids(__text_dir__ + csv_file_name, user_id_col=0, date_col=1, time_col=2)
     exit(0)
-    # sort_csv_by_header(__text_dir__ + csv_file_name, 'user_id','time')
-    # extract_session_ids(__text_dir__ + csv_file_name, __threshold_secs__, 'time')
 
 
 if __name__ == '__main__':
