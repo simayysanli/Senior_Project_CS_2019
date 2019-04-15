@@ -165,38 +165,6 @@ def is_diff_gt_threshold(d2, t2, d1, t1, threshold_secs=__threshold_secs__):
         print('ERROR: Wrong date infos for is_diff_bigger_than_threshold function.')
         exit(-1)
 
-
-# def extract_session_ids(csv_file, threshold, time_col):
-#     df = pd.read_csv(csv_file, sep=__csv_sep__, index_col=False)
-#     countRow = df.shape[0]
-#     print('countRow:', countRow)
-#     user_id = 0
-#     max_user_id = 13617
-#     session_id_no = 0
-#     session_id = 0
-#     datetimeFormat = '%H:%M:%S'
-#     while user_id <= max_user_id:
-#         num = find_user(user_id, countRow, df)
-#         for i in range(num):
-#             diff = datetime.datetime.strptime(df[time_col].iloc[i + 1], datetimeFormat) \
-#                    - datetime.datetime.strptime(df[time_col].iloc[i], datetimeFormat)
-#             print("Seconds:", diff.seconds)
-#             if (diff.seconds < threshold):
-#                 session_id = session_id_no
-#             else:
-#                 session_id += 1
-#         user_id += 1
-#
-#
-# def find_user(user_id, countRow, df):
-#     count = 0
-#     for j in range(countRow):
-#         if (df['user_id'].iloc[j] == user_id):
-#             count += 1
-#     # print(count)
-#     return count
-#
-
 def calc_session_ids(csv_file, user_id_col, date_col, time_col):
     unprocessed_csv_file = open(csv_file, 'r')
     new_csv_file = csv_file.replace('.csv', '[SESSION].csv')
