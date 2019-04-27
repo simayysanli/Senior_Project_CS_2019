@@ -1,5 +1,6 @@
-import pandas as pd
 from datetime import datetime
+
+import pandas as pd
 
 __csv_sep__ = '|'  # csv separator
 
@@ -39,9 +40,33 @@ class TimeOperations:
 
 
 class PreProcessOperations:
+    # ################### UTILITY METHODS #####################
 
     @staticmethod
-    def log_to_csv(log_file):
+    def is_nav_link(uri_stem):
+        web_page_ext = {'asp', 'aspx', 'htm', 'html', 'shtml',  # web page extensions
+                        'xhtml', 'php', 'jsp', 'jspx', 'pl', 'cgi'}
+
+        uri_stem_splitted = uri_stem.rsplit('.', 1)
+
+        if len(uri_stem_splitted) == 1 or web_page_ext.__contains__(uri_stem_splitted[1]):  # does have an extension
+            return True
+        return False
+
+    @staticmethod
+    def list_to_csv_line(a_list):  # Concatenates items of a list by using csv separator
+        line = ''
+        for item in a_list:
+            line += str(item) + __csv_sep__
+        return line[:-len(__csv_sep__)]  # Remove last separator character
+
+    @staticmethod
+    def line_to_list(a_line):
+        return a_line[:-1].split(__csv_sep__)
+
+    # ################### PRE-PROCESS METHODS #################
+
+    def log_to_csv(self, log_file):
         csv_file = log_file.replace('.log', '[CSV].csv')
 
         input_log_file = open(log_file, encoding='ISO-8859-1')
@@ -51,7 +76,7 @@ class PreProcessOperations:
                             's-port', 'cs-username', 'c-ip', 'cs(User-Agent)', 'cs(Referer)',
                             'sc-status', 'sc-substatus', 'sc-win32-status', 'time-taken']
 
-        csv_header = list_to_csv_line(csv_header_items)
+        csv_header = self.list_to_csv_line(csv_header_items)
         output_csv_file.write(csv_header + '\n')  # Write header to first row of the file.
 
         count_comment = 0
@@ -66,53 +91,54 @@ class PreProcessOperations:
         input_log_file.close()
         output_csv_file.close()
 
-        print('INFO: %d out of %d log-rows converted to csv format.' % (count_log, count_log + count_comment))
-        print('INFO: %d out of %d comment-rows have been omitted.' % (count_comment, count_log + count_comment))
-        print('Function has successfully terminated and new file named \'%s\' created.' % csv_file)
+        print('> INFO: %d out of %d log-rows converted to csv format.' % (count_log, count_log + count_comment))
+        print('> INFO: %d out of %d comment-rows have been omitted.' % (count_comment, count_log + count_comment))
+        print('> Function has successfully terminated and new file named \'%s\' created.' % csv_file)
+        print('-' * 80)
 
-    @staticmethod
-    def clean_bots_from_csv(csv_file, user_agent_idx):
-        count_botlog = 0
+    def clean_bots_from_csv(self, csv_file, user_agent_idx):
+        bot_log_count = 0
         new_csv_file = csv_file.replace('.csv', '[NoBots].csv')
         unprocessed_csv_file = open(csv_file, 'r')
         processed_csv_file = open(new_csv_file, 'w')
 
-        unprocessed_csv_file.__next__()  # pass csv header
+        csv_header = unprocessed_csv_file.__next__()  # pass csv header
+        processed_csv_file.write(csv_header)  # Write same header to first row of the file.
 
         for line in unprocessed_csv_file:
-            user_agent = line_to_list(line)[user_agent_idx]
+            user_agent = self.line_to_list(line)[user_agent_idx]
 
             if not user_agent.lower().__contains__('bot'):  # If line doesn't contain 'bot' in any case.
                 processed_csv_file.write(line)
             else:
-                count_botlog += 1
+                bot_log_count += 1
         unprocessed_csv_file.close()
         processed_csv_file.close()
 
-        print('INFO: %d bot logs have been omitted.' % count_botlog)
-        print('Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
+        print('> INFO: %d bot logs have been omitted.' % bot_log_count)
+        print('> Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
+        print('-' * 80)
 
-    @staticmethod
-    def select_features_in_csv(csv_file, selected_features):
+    def select_features_in_csv(self, csv_file, selected_features):
         new_csv_file = csv_file.replace('.csv', '[SF].csv')
 
         unprocessed_csv_file = open(csv_file, 'r')
         processed_csv_file = open(new_csv_file, 'w')
 
         for line in unprocessed_csv_file:
-            item_list = line_to_list(line)
+            item_list = self.line_to_list(line)
 
             new_item_list = []
             for col in selected_features:
                 new_item_list.append(item_list[col])
 
-            processed_csv_file.write(list_to_csv_line(new_item_list) + '\n')
+            processed_csv_file.write(self.list_to_csv_line(new_item_list) + '\n')
         unprocessed_csv_file.close()
         processed_csv_file.close()
-        print('Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
+        print('> Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
+        print('-' * 80)
 
-    @staticmethod
-    def extract_usr_ids(csv_file, ip_idx, usr_agent_idx):
+    def extract_usr_ids(self, csv_file, ip_idx, usr_agent_idx):
         unprocessed_csv_file = open(csv_file, 'r')
         unprocessed_csv_file.__next__()  # pass csv header
 
@@ -120,7 +146,7 @@ class PreProcessOperations:
         users_dict = {}  # key = tuple_of_ip_and_user-agent & value = user_id
         users_dict_count = 0
         for line in unprocessed_csv_file:
-            tmp_list = line_to_list(line)
+            tmp_list = self.line_to_list(line)
             a_tuple = (tmp_list[ip_idx], tmp_list[usr_agent_idx])
             if not users_set.__contains__(a_tuple):
                 users_set.add(a_tuple)
@@ -129,8 +155,7 @@ class PreProcessOperations:
         unprocessed_csv_file.close()
         return users_dict
 
-    @staticmethod
-    def write_usr_ids(csv_file, users_dict, ip_idx, usr_agent_idx):
+    def write_usr_ids(self, csv_file, users_dict, ip_idx, usr_agent_idx):
         unprocessed_csv_file = open(csv_file, 'r')
         new_csv_file = csv_file.replace('.csv', '[USERS].csv')
         processed_csv_file = open(new_csv_file, 'w')
@@ -140,7 +165,7 @@ class PreProcessOperations:
         processed_csv_file.write(new_csv_header)  # Write new header to first row of the file.
 
         for line in unprocessed_csv_file:
-            tmp_list = line_to_list(line)
+            tmp_list = self.line_to_list(line)
             a_tuple = (tmp_list[ip_idx], tmp_list[usr_agent_idx])
 
             user_id = users_dict.get(a_tuple)
@@ -148,7 +173,8 @@ class PreProcessOperations:
             processed_csv_file.write(new_line)
         unprocessed_csv_file.close()
         processed_csv_file.close()
-        print('Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
+        print('> Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
+        print('-' * 80)
 
     @staticmethod
     def sort_csv_by_header(csv_file, header_item1, header_item2, header_item3):
@@ -157,10 +183,10 @@ class PreProcessOperations:
 
         new_csv_file = csv_file.replace('.csv', '[SORTED].csv')
         df.to_csv(new_csv_file, index=False, sep=__csv_sep__)
-        print('Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
+        print('> Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
+        print('-' * 80)
 
-    @staticmethod
-    def calc_session_ids(csv_file, user_id_idx, date_idx, time_idx):
+    def calc_session_ids(self, csv_file, user_id_idx, date_idx, time_idx):
         unprocessed_csv_file = open(csv_file, 'r')
         new_csv_file = csv_file.replace('.csv', '[SESSION].csv')
         processed_csv_file = open(new_csv_file, 'w')
@@ -177,10 +203,10 @@ class PreProcessOperations:
 
         threshold_sec = 600  # 10 minutes
 
-        prev_ln = line_to_list(first_ln)
+        prev_ln = self.line_to_list(first_ln)
         session_id = 0  # initialize session id
         for line in unprocessed_csv_file:
-            cur_ln = line_to_list(line)
+            cur_ln = self.line_to_list(line)
 
             if cur_ln[user_id_idx] != prev_ln[user_id_idx]:  # different user
                 session_id += 1
@@ -194,9 +220,12 @@ class PreProcessOperations:
             processed_csv_file.write(new_line)
 
             prev_ln = cur_ln
+        unprocessed_csv_file.close()
+        processed_csv_file.close()
+        print('> Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
+        print('-' * 80)
 
-    @staticmethod
-    def clean_img_from_csv(csv_file, sid_idx, uri_stem_idx):
+    def clean_img_from_csv(self, csv_file, sid_idx, uri_stem_idx):
         count_img_log = 0
         count_all_log = 0
         img_extensions = {'.png', '.jpg', '.ico', '.gif'}
@@ -211,7 +240,7 @@ class PreProcessOperations:
 
         for line in unprocessed_csv_file:
             count_all_log += 1
-            listed_line = line_to_list(line)
+            listed_line = self.line_to_list(line)
             user_agent = listed_line[uri_stem_idx]
             cur_session = int(listed_line[sid_idx])
 
@@ -224,11 +253,45 @@ class PreProcessOperations:
         unprocessed_csv_file.close()
         processed_csv_file.close()
 
-        print('INFO: %d out of %d image-containing-rows have been omitted.' % (count_img_log, count_all_log))
-        print('Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
+        print('> INFO: %d out of %d image-containing-rows have been omitted.' % (count_img_log, count_all_log))
+        print('> Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
+        print('-' * 80)
 
-    @staticmethod
-    def get_filtered_table(csv_file, sid_idx, usr_idx, date_idx, time_idx, uri_stem_idx):
+    def clean_redirect_links_from_csv(self, csv_file, sid_idx, time_idx, uri_stem_idx):
+        new_csv_file = csv_file.replace('.csv', '[NoRL].csv')
+        input_csv = open(csv_file, 'r')
+        output_csv = open(new_csv_file, 'w')
+
+        csv_header = input_csv.__next__()  # pass csv header
+        output_csv.write(csv_header)  # Write same header to first row of the file.
+        prev_ln = self.line_to_list(input_csv.__next__())  # first line
+
+        count_rl_log = 0
+        count_all_log = 1
+
+        for line in input_csv:
+            count_all_log += 1
+            cur_ln = self.line_to_list(line)
+            sid_time_tup0 = (prev_ln[sid_idx], prev_ln[time_idx])
+            sid_time_tup1 = (cur_ln[sid_idx], cur_ln[time_idx])
+
+            both_nav_links = self.is_nav_link(prev_ln[uri_stem_idx]) and self.is_nav_link(cur_ln[uri_stem_idx])
+            if sid_time_tup0 != sid_time_tup1 or not both_nav_links:
+                output_csv.write(self.list_to_csv_line(prev_ln) + '\n')
+            else:
+                count_rl_log += 1  # omitted 1 log.
+
+            prev_ln = cur_ln
+        output_csv.write(self.list_to_csv_line(prev_ln) + '\n')  # handle last line
+
+        input_csv.close()
+        output_csv.close()
+        print(
+            '> INFO: %d out of %d rows that contains redirect links have been omitted.' % (count_rl_log, count_all_log))
+        print('> Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
+        print('-' * 80)
+
+    def get_filtered_table(self, csv_file, sid_idx, usr_idx, date_idx, time_idx, uri_stem_idx):
         session_avg_wait_t = 20  # estimated average waiting time in a single link.
 
         new_csv_file = csv_file.replace('.csv', '[FilteredTable].csv')
@@ -239,17 +302,17 @@ class PreProcessOperations:
         new_csv_header_items = ['session_id', 'user_id', 'link_count', 'unique_link_count', 'duration', 'pdf_click',
                                 'video_click', 'test_solved']
 
-        new_csv_header = list_to_csv_line(new_csv_header_items)
+        new_csv_header = self.list_to_csv_line(new_csv_header_items)
         output_csv.write(new_csv_header + '\n')  # Write new header to first row of the file.
 
         input_csv.__next__()  # Pass CSV Header.
-        prev_ln = session_1st_ln = line_to_list(input_csv.__next__())
+        prev_ln = session_1st_ln = self.line_to_list(input_csv.__next__())
         link_cnt = unq_link_cnt = 1
         unique_links_set = set()
 
         for line in input_csv:
-            cur_ln = line_to_list(line)
-            if is_navigation_link(prev_ln[uri_stem_idx]):
+            cur_ln = self.line_to_list(line)
+            if self.is_nav_link(prev_ln[uri_stem_idx]):
                 link_cnt += 1
                 if not unique_links_set.__contains__(prev_ln[uri_stem_idx]):
                     unique_links_set.add(prev_ln[uri_stem_idx])
@@ -258,7 +321,7 @@ class PreProcessOperations:
             if cur_ln[sid_idx] != prev_ln[sid_idx]:  # different session
                 duration = session_avg_wait_t + t_o.calc_time_diff(prev_ln, session_1st_ln, date_idx, time_idx)
                 csv_list = [prev_ln[sid_idx], prev_ln[usr_idx], link_cnt, unq_link_cnt, duration, 'n/a', 'n/a', 'n/a']
-                output_csv.write(list_to_csv_line(csv_list) + '\n')
+                output_csv.write(self.list_to_csv_line(csv_list) + '\n')
 
                 unq_link_cnt = link_cnt = 1
                 unique_links_set = set()
@@ -268,24 +331,17 @@ class PreProcessOperations:
 
         # handle last line
         last_ln = prev_ln
-        if is_navigation_link(last_ln[uri_stem_idx]):
+        if self.is_nav_link(last_ln[uri_stem_idx]):
             link_cnt += 1
             if not unique_links_set.__contains__(last_ln[uri_stem_idx]):
                 unq_link_cnt += 1
         duration = session_avg_wait_t + t_o.calc_time_diff(prev_ln, session_1st_ln, date_idx, time_idx)
         csv_list = [last_ln[sid_idx], last_ln[usr_idx], link_cnt, unq_link_cnt, duration, 'n/a', 'n/a', 'n/a']
-        output_csv.write(list_to_csv_line(csv_list) + '\n')
-
-
-def list_to_csv_line(a_list):  # Concatenates items of a list by using csv separator
-    line = ''
-    for item in a_list:
-        line += str(item) + __csv_sep__
-    return line[:-len(__csv_sep__)]  # Remove last separator character
-
-
-def line_to_list(a_line):
-    return a_line[:-1].split(__csv_sep__)
+        output_csv.write(self.list_to_csv_line(csv_list) + '\n')
+        input_csv.close()
+        output_csv.close()
+        print('> Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
+        print('-' * 80)
 
 
 def create_file_names(repo_dir, ds_name, process_labels, extension):
@@ -300,21 +356,22 @@ def create_file_names(repo_dir, ds_name, process_labels, extension):
     return file_names
 
 
-def is_navigation_link(uri_stem):
-    web_page_ext = {'asp', 'aspx', 'htm', 'html', 'shtml',  # web page extensions
-                    'xhtml', 'php', 'jsp', 'jspx', 'pl', 'cgi'}
-
-    uri_stem_splited = uri_stem.rsplit('.', 1)
-
-    if len(uri_stem_splited) == 1 or web_page_ext.__contains__(uri_stem_splited[1]):  # does have an extension
-        return True
-    return False
-
-
 def main():
+    # ######### PROCESS LIST ######################################
+    # CSV: CSV format of input log
+    # NoBots: Crawler that visited the page have been removed.
+    # SF: Given features are selected and others have been omitted.
+    # USERS: User ids are extracted according to their IP and User-Agent info.
+    # SESSION: Session ids are extracted according to delta time between logs that has same User-ID.
+    # NoImgs: Logs that have image in URI-stem have been omitted.
+    # NoRL: Links that redirect to another link within a sec have been omitted.
+    # FilteredTable: Final summarized table have been obtained.
+    # #############################################################
+
+    process_labels = ['CSV', 'NoBots', 'SF', 'USERS', 'SORTED', 'SESSION', 'NoImgs', 'NoRL', 'FilteredTable']
     repo_dir = 'TextFiles/'  # Directory of data set files
     data_set = 'u_extend15'  # name of data set
-    process_labels = ['CSV', 'NoBots', 'SF', 'USERS', 'SORTED', 'SESSION', 'NoImgs', 'FilteredTable']
+
     file_names = create_file_names(repo_dir, data_set, process_labels, extension='.csv')
     ppo = PreProcessOperations()
 
@@ -326,9 +383,8 @@ def main():
     ppo.sort_csv_by_header(file_names[3], header_item1='user_id', header_item2='date', header_item3='time')
     ppo.calc_session_ids(file_names[4], user_id_idx=0, date_idx=1, time_idx=2)
     ppo.clean_img_from_csv(file_names[5], sid_idx=0, uri_stem_idx=4)
-
-    # clean forward link?
-    ppo.get_filtered_table(file_names[6], sid_idx=0, usr_idx=1, date_idx=2, time_idx=3, uri_stem_idx=4)
+    ppo.clean_redirect_links_from_csv(file_names[6], sid_idx=0, time_idx=3, uri_stem_idx=4)
+    ppo.get_filtered_table(file_names[7], sid_idx=0, usr_idx=1, date_idx=2, time_idx=3, uri_stem_idx=4)
 
     print('Success')
 
