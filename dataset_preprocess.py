@@ -190,14 +190,13 @@ class PreProcessOperations:
         unprocessed_csv_file = open(csv_file, 'r')
         new_csv_file = csv_file.replace('.csv', '[SESSION].csv')
         processed_csv_file = open(new_csv_file, 'w')
-        csv_sep = __csv_sep__
 
         csv_header = unprocessed_csv_file.__next__()
-        new_header = 'session_id' + csv_sep + csv_header
+        new_header = 'session_id' + __csv_sep__ + csv_header
         processed_csv_file.write(new_header)  # Write new header to new file.
 
         first_ln = unprocessed_csv_file.__next__()
-        processed_csv_file.write('0' + csv_sep + first_ln)  # write first row with session_id = 0
+        processed_csv_file.write('0' + __csv_sep__ + first_ln)  # write first row with session_id = 0
 
         t_o = TimeOperations(time_format='%H:%M:%S', date_format='%Y-%m-%d')
 
@@ -215,7 +214,7 @@ class PreProcessOperations:
                 if real_diff > threshold_sec:  # same user && large diff
                     session_id += 1
 
-            new_line = str(session_id) + '|' + line
+            new_line = str(session_id) + __csv_sep__ + line
 
             processed_csv_file.write(new_line)
 
@@ -257,7 +256,7 @@ class PreProcessOperations:
         print('> Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
         print('-' * 80)
 
-    def clean_redirect_links_from_csv(self, csv_file, sid_idx, time_idx, uri_stem_idx):
+    def clean_redirect_links_from_csv(self, csv_file, sid_idx, time_idx, uri_stem_idx): # Will be added to paper
         new_csv_file = csv_file.replace('.csv', '[NoRL].csv')
         input_csv = open(csv_file, 'r')
         output_csv = open(new_csv_file, 'w')
@@ -291,7 +290,7 @@ class PreProcessOperations:
         print('> Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
         print('-' * 80)
 
-    def get_filtered_table(self, csv_file, sid_idx, usr_idx, date_idx, time_idx, uri_stem_idx):
+    def get_filtered_table(self, csv_file, sid_idx, usr_idx, date_idx, time_idx, uri_stem_idx): # Will be added to paper
         session_avg_wait_t = 20  # estimated average waiting time in a single link.
 
         new_csv_file = csv_file.replace('.csv', '[FilteredTable].csv')
