@@ -9,8 +9,7 @@ __csv_sep__ = '|'  # csv separator
 def is_nav_link(url):
     web_page_ext = {'00asp', '0aspx', '0ashx', '00htm', '0html', 'shtml',  # web page extensions
                     'xhtml', '00php', '00jsp', '0jspx', '000pl', '00cgi'}
-
-    size_url_extension = 5
+    extension_size = 5
 
     url_splitted = url.rsplit('.', 1)
     if len(url_splitted) == 1:
@@ -18,10 +17,10 @@ def is_nav_link(url):
 
     url_ext_part = url_splitted[1]
 
-    if size_url_extension > len(url_ext_part):
-        url_extension = '0' * (size_url_extension - len(url_ext_part)) + url_ext_part
+    if extension_size > len(url_ext_part):
+        url_extension = '0' * (extension_size - len(url_ext_part)) + url_ext_part  # Fill with zeroes.
     else:
-        url_extension = url_ext_part[:size_url_extension]
+        url_extension = url_ext_part[:extension_size]
 
     if web_page_ext.__contains__(url_extension.lower()):  # does have an extension
         return True
@@ -47,9 +46,119 @@ def link_contains_image(url):
     return False
 
 
+def display_func_exit_msg(output_file, class_name, func_name):
+    print('> %s.%s(..) terminated and new file named \'%s\' created.' % (class_name, func_name, output_file))
+    print('-' * 80)
+
+
+def reduce_multiple_spaces(a_string):
+    return ' '.join(a_string.split())
+
+
+def transform_csv_header(old_csv_header):
+    old_csv_header = old_csv_header.lower()
+    csv_header_line = reduce_multiple_spaces(old_csv_header)
+    csv_header_replacements_tuples = [('kullaniciid', 'user_id'), ('loginid', 'session_id'),
+                                      ('cikistarih', 'exit_date exit_time'), ('videoid', 'video_id'),
+                                      ('tarih', 'date time')]
+    for old_feature, new_feature in csv_header_replacements_tuples:
+        csv_header_line = csv_header_line.replace(old_feature, new_feature)
+
+    return csv_header_line.replace(' ', __csv_sep__)
+
+
 # ########################################################
 
+
 class PreProcessOperations:
+
+    @staticmethod
+    def extract_video_durations(csv_file, d1_feature, t1_feature, d2_feature, t2_feature, time_format, date_format):
+        t_o = to.TimeOperations(time_format, date_format)
+
+        new_csv_file = csv_file.replace('.csv', '[VDur].csv')
+        input_csv = open(csv_file)
+        output_csv = open(new_csv_file, 'w')
+
+        csv_header = input_csv.__next__()  # pass csv header
+
+        csv_header_list = line_to_list(csv_header)
+        d1_idx = csv_header_list.index(d1_feature)
+        t1_idx = csv_header_list.index(t1_feature)
+        d2_idx = csv_header_list.index(d2_feature)
+        t2_idx = csv_header_list.index(t2_feature)
+
+        csv_header = csv_header.replace(__csv_sep__ + t2_feature, '')  # Delete t2_feature
+        csv_header = csv_header.replace(d2_feature, 'video_duration')  # Add new feature called 'video_duration'
+        output_csv.write(csv_header)  # Write new header to first row of the file.
+
+        for line in input_csv:
+            line_list = line_to_list(line)
+
+            if line_list[d2_idx] == 'NONE':  # If exit date of video is NONE.
+                video_duration = 1  # Video duration is unknown, so we assume that it's 1 second.
+            else:
+                list2 = [line_list[d2_idx], line_list[t2_idx]]
+                list1 = [line_list[d1_idx], line_list[t1_idx]]
+                video_duration = t_o.calc_time_diff(list2, list1, date_idx=0, time_idx=1)
+
+            line_list.remove(line_list[t2_idx])
+            line_list[d2_idx] = video_duration
+            output_csv.write(list_to_csv_line(line_list) + '\n')
+
+        input_csv.close()
+        output_csv.close()
+        display_func_exit_msg(output_file=new_csv_file, class_name=__name__, func_name='extract_video_durations')
+
+    @staticmethod
+    def fill_with_nones(csv_file):  # If there is any absent item in csv file, fill with NONEs.
+        new_csv_file = csv_file.replace('.csv', '[FiNones].csv')
+
+        input_csv = open(csv_file)
+        output_csv = open(new_csv_file, 'w')
+
+        csv_header = input_csv.__next__()  # pass csv header
+        output_csv.write(csv_header)  # Write same header to first row of the file.
+
+        csv_col_size = csv_header.count(__csv_sep__) + 1
+
+        for line in input_csv:
+            line = line.replace('NULL', 'NONE')
+            line_col_size = line.count(__csv_sep__) + 1
+            line_list = line_to_list(line)
+
+            for i in range(csv_col_size - line_col_size):
+                line_list.append('NONE')
+            output_csv.write(list_to_csv_line(line_list) + '\n')
+
+        input_csv.close()
+        output_csv.close()
+        display_func_exit_msg(output_file=new_csv_file, class_name=__name__, func_name='fill_with_nones')
+
+    @staticmethod
+    def exchange_columns(csv_file, feature1, feature2):
+        new_csv_file = csv_file.replace('.csv', '[ExCol].csv')
+
+        input_csv = open(csv_file)
+        output_csv = open(new_csv_file, 'w')
+
+        header_items = line_to_list(input_csv.__next__())
+        item1_idx = header_items.index(feature1)
+        item2_idx = header_items.index(feature2)
+
+        header_items[item1_idx], header_items[item2_idx] = header_items[item2_idx], header_items[item1_idx]  # Swap
+        output_csv.write(list_to_csv_line(header_items) + '\n')
+
+        for line in input_csv:
+            line_items = line_to_list(line)
+            line_items[item1_idx], line_items[item2_idx] = line_items[item2_idx], line_items[item1_idx]  # Swap
+
+            output_csv.write(list_to_csv_line(line_items) + '\n')
+
+        input_csv.close()
+        output_csv.close()
+        display_func_exit_msg(output_file=new_csv_file, class_name=__name__, func_name='exchange_columns')
+
     @staticmethod
     def raw_log_to_csv(log_file):
         csv_file = log_file.replace('.log', '[CSV].csv')
@@ -57,15 +166,14 @@ class PreProcessOperations:
         input_log_file = open(log_file, encoding='ISO-8859-1')
         output_csv_file = open(csv_file, 'w')
 
-        csv_header_items = ['date', 'time', 's-ip', 'cs-method', 'cs-uri-stem', 'cs-uri-query',
-                            's-port', 'cs-username', 'c-ip', 'cs(User-Agent)', 'cs(Referer)',
-                            'sc-status', 'sc-substatus', 'sc-win32-status', 'time-taken']
+        csv_header_items = [
+            'date', 'time', 's-ip', 'cs-method', 'cs-uri-stem', 'cs-uri-query', 's-port', 'cs-username', 'c-ip',
+            'cs(User-Agent)', 'cs(Referer)', 'sc-status', 'sc-substatus', 'sc-win32-status', 'time-taken']
 
         csv_header = list_to_csv_line(csv_header_items)
         output_csv_file.write(csv_header + '\n')  # Write header to first row of the file.
 
-        count_comment = 0
-        count_log = 0
+        count_comment, count_log = 0, 0
         for line in input_log_file:
             if not line.startswith('#'):  # If row is not comment, consider.
                 count_log += 1
@@ -78,8 +186,7 @@ class PreProcessOperations:
 
         print('> INFO: %d out of %d log-rows converted to csv format.' % (count_log, count_log + count_comment))
         print('> INFO: %d out of %d comment-rows have been omitted.' % (count_comment, count_log + count_comment))
-        print('> Function has successfully terminated and new file named \'%s\' created.' % csv_file)
-        print('-' * 80)
+        display_func_exit_msg(output_file=csv_file, class_name=__name__, func_name='raw_log_to_csv')
 
     @staticmethod
     def preprocessed_log_to_csv(log_file):
@@ -91,16 +198,9 @@ class PreProcessOperations:
         input_log_file = open(log_file)
         output_csv_file = open(csv_file, 'w')
 
-        csv_header_replacements_tuples = [('kullaniciid', 'user_id'), ('loginid', 'session_id'),
-                                          ('cikistarih', 'exit_date exit_time'), ('videoid', 'video_id'),
-                                          ('tarih', 'date time')]
-
-        csv_header_line = ' '.join(input_log_file.__next__().split()).lower()
-        for old_header_item, new_header_item in csv_header_replacements_tuples:
-            csv_header_line = csv_header_line.replace(old_header_item, new_header_item)
-
-        csv_header = csv_header_line.replace(' ', __csv_sep__)
-        output_csv_file.write(csv_header)  # Write header to first row of the file.
+        old_csv_header = input_log_file.__next__()
+        new_csv_header = transform_csv_header(old_csv_header)
+        output_csv_file.write(new_csv_header + '\n')  # Write header to first row of the file.
 
         with open(log_file) as f:
             num_of_rows = sum(1 for _ in f)
@@ -108,14 +208,11 @@ class PreProcessOperations:
         input_log_file.__next__()  # Pass line filled with dashes
         for i in range(num_of_rows - 5):  # Reduce first 2 rows and last 3 rows
             line = input_log_file.__next__()
-            spaces_reduced_row = ' '.join(line.split())
-            spaces_reduced_row = spaces_reduced_row.replace(' ', __csv_sep__)
+            spaces_reduced_row = reduce_multiple_spaces(line).replace(' ', __csv_sep__)
             output_csv_file.write(spaces_reduced_row + '\n')
         input_log_file.close()
         output_csv_file.close()
-
-        print('> Function has successfully terminated and new file named \'%s\' created.' % csv_file)
-        print('-' * 80)
+        display_func_exit_msg(output_file=csv_file, class_name=__name__, func_name='preprocessed_log_to_csv')
 
     @staticmethod
     def clean_bots_from_csv(csv_file, user_agent_idx):
@@ -138,8 +235,7 @@ class PreProcessOperations:
         processed_csv_file.close()
 
         print('> INFO: %d bot logs have been omitted.' % bot_log_count)
-        print('> Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
-        print('-' * 80)
+        display_func_exit_msg(output_file=new_csv_file, class_name=__name__, func_name='clean_bots_from_csv')
 
     @staticmethod
     def select_features_in_csv(csv_file, selected_features):
@@ -158,8 +254,7 @@ class PreProcessOperations:
             processed_csv_file.write(list_to_csv_line(new_item_list) + '\n')
         unprocessed_csv_file.close()
         processed_csv_file.close()
-        print('> Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
-        print('-' * 80)
+        display_func_exit_msg(output_file=new_csv_file, class_name=__name__, func_name='select_features_in_csv')
 
     @staticmethod
     def extract_usr_ids(csv_file, ip_idx, usr_agent_idx):
@@ -198,8 +293,7 @@ class PreProcessOperations:
             processed_csv_file.write(new_line)
         unprocessed_csv_file.close()
         processed_csv_file.close()
-        print('> Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
-        print('-' * 80)
+        display_func_exit_msg(output_file=new_csv_file, class_name=__name__, func_name='write_usr_ids')
 
     @staticmethod
     def sort_csv_by_header(csv_file, feature1, feature2, feature3, feature4):  # sort up to 4 header
@@ -216,26 +310,22 @@ class PreProcessOperations:
 
         new_csv_file = csv_file.replace('.csv', '[SORTED].csv')
         df.to_csv(new_csv_file, index=False, sep=__csv_sep__)
-        print('> Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
-        print('-' * 80)
+        display_func_exit_msg(output_file=new_csv_file, class_name=__name__, func_name='sort_csv_by_header')
 
     @staticmethod
-    def calc_session_ids(csv_file, user_id_idx, date_idx, time_idx):
+    def calc_session_ids(csv_file, user_id_idx, date_idx, time_idx, time_format, date_format, threshold_sec=600):
+        t_o = to.TimeOperations(time_format, date_format)
+
         unprocessed_csv_file = open(csv_file, 'r')
         new_csv_file = csv_file.replace('.csv', '[SESSION].csv')
         processed_csv_file = open(new_csv_file, 'w')
 
         csv_header = unprocessed_csv_file.__next__()
-
         new_header = 'session_id' + __csv_sep__ + csv_header
         processed_csv_file.write(new_header)  # Write new header to new file.
 
         first_ln = unprocessed_csv_file.__next__()
         processed_csv_file.write('0' + __csv_sep__ + first_ln)  # write first row with session_id = 0
-
-        t_o = to.TimeOperations(time_format='%H:%M:%S', date_format='%Y-%m-%d')
-
-        threshold_sec = 600  # 10 minutes
 
         prev_ln = line_to_list(first_ln)
         session_id = 0  # initialize session id
@@ -249,17 +339,18 @@ class PreProcessOperations:
                 if real_diff > threshold_sec:  # same user && large diff
                     session_id += 1
             new_line = str(session_id) + __csv_sep__ + line
-
             processed_csv_file.write(new_line)
 
             prev_ln = cur_ln
         unprocessed_csv_file.close()
         processed_csv_file.close()
-        print('> Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
-        print('-' * 80)
+        display_func_exit_msg(output_file=new_csv_file, class_name=__name__, func_name='calc_session_ids')
 
     @staticmethod
-    def clean_non_page_links_from_csv(csv_file, uid_idx, date_idx, time_idx, url_idx):  # Will be added to paper
+    def clean_non_page_links_from_csv(csv_file, uid_idx, date_idx, time_idx, url_idx):
+        #
+        # Will be added to paper
+        #
         new_csv_file = csv_file.replace('.csv', '[AllPages].csv')
         input_csv = open(csv_file, 'r')
         output_csv = open(new_csv_file, 'w')
@@ -292,16 +383,14 @@ class PreProcessOperations:
         input_csv.close()
         output_csv.close()
         print('> INFO: %d out of %d rows that contains non-pages have been omitted.' % (cnt_non_pages_log, cnt_all_log))
-        print('> Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
-        print('-' * 80)
+        display_func_exit_msg(output_file=new_csv_file, class_name=__name__, func_name='clean_non_page_links_from_csv')
 
     @staticmethod
-    def get_filtered_table(csv_file, usr_idx, sid_idx, date_idx, time_idx, url_idx, time_format, date_format):
+    def filter_page_views(csv_file, usr_idx, sid_idx, date_idx, time_idx, url_idx, time_format, date_format,
+                          session_avg_wait_t=20):
         #
         # Will be added to paper
         #
-        session_avg_wait_t = 20  # estimated average waiting time (in secs) in a single link.
-
         new_csv_file = csv_file.replace('.csv', '[FilteredTable].csv')
         input_csv = open(csv_file, 'r')
         output_csv = open(new_csv_file, 'w')
@@ -342,9 +431,62 @@ class PreProcessOperations:
         if not unique_links_set.__contains__(last_ln[url_idx]):
             unq_link_cnt += 1
         duration = session_avg_wait_t + t_o.calc_time_diff(prev_ln, session_1st_ln, date_idx, time_idx)
-        csv_list = [last_ln[sid_idx], last_ln[usr_idx], link_cnt, unq_link_cnt, duration, 'n/a', 'n/a', 'n/a']
+        csv_list = [last_ln[usr_idx], last_ln[sid_idx], link_cnt, unq_link_cnt, duration]
         output_csv.write(list_to_csv_line(csv_list) + '\n')
+
         input_csv.close()
         output_csv.close()
-        print('> Function has successfully terminated and new file named \'%s\' created.' % new_csv_file)
-        print('-' * 80)
+        display_func_exit_msg(output_file=new_csv_file, class_name=__name__, func_name='filter_page_views')
+
+    @staticmethod
+    def filter_video_views(csv_file, usr_idx, sid_idx, date_idx, time_idx, url_idx, time_format, date_format):
+        #
+        # Will be added to paper
+        #
+        new_csv_file = csv_file.replace('.csv', '[FilteredTable].csv')
+        input_csv = open(csv_file, 'r')
+        output_csv = open(new_csv_file, 'w')
+        t_o = to.TimeOperations(time_format=time_format, date_format=date_format)
+
+        new_csv_header_items = ['user_id', 'session_id', 'link_count', 'unique_link_count', 'session_duration_in_s']
+
+        new_csv_header = list_to_csv_line(new_csv_header_items)
+        output_csv.write(new_csv_header + '\n')  # Write new header to first row of the file.
+
+        input_csv.__next__()  # Pass CSV Header.
+        prev_ln = session_1st_ln = line_to_list(input_csv.__next__())
+        link_cnt = unq_link_cnt = 0
+        unique_links_set = set()
+
+        for line in input_csv:
+            cur_ln = line_to_list(line)
+
+            link_cnt += 1
+            if not unique_links_set.__contains__(prev_ln[url_idx]):
+                unique_links_set.add(prev_ln[url_idx])
+                unq_link_cnt += 1
+
+            if cur_ln[sid_idx] != prev_ln[sid_idx]:  # different session
+                session_duration = session_avg_wait_t + t_o.calc_time_diff(prev_ln, session_1st_ln, date_idx,
+                                                                           time_idx)
+                csv_list = [prev_ln[usr_idx], prev_ln[sid_idx], link_cnt, unq_link_cnt, session_duration]
+                output_csv.write(list_to_csv_line(csv_list) + '\n')
+
+                unq_link_cnt = link_cnt = 0
+                unique_links_set = set()
+                session_1st_ln = cur_ln
+
+            prev_ln = cur_ln
+
+        # handle last line
+        last_ln = prev_ln
+        link_cnt += 1
+        if not unique_links_set.__contains__(last_ln[url_idx]):
+            unq_link_cnt += 1
+        duration = session_avg_wait_t + t_o.calc_time_diff(prev_ln, session_1st_ln, date_idx, time_idx)
+        csv_list = [last_ln[usr_idx], last_ln[sid_idx], link_cnt, unq_link_cnt, duration]
+        output_csv.write(list_to_csv_line(csv_list) + '\n')
+
+        input_csv.close()
+        output_csv.close()
+        display_func_exit_msg(output_file=new_csv_file, class_name=__name__, func_name='filter_page_views')
