@@ -2,9 +2,9 @@
 # CSV: CSV format of input log
 # NoBots: Crawler that visited the page have been removed.
 # SF: Given features are selected and others have been omitted.
-# USERS: User ids are extracted according to their IP and User-Agent info.
-# SORTED: Data is sorted by 3 attribute respectively.
-# SESSION: Session ids are extracted according to delta time between logs that has same User-ID.
+# UserIDs: User ids are extracted according to their IP and User-Agent info.
+# Sorted: Data is sorted by 3 attribute respectively.
+# SessionIDs: Session ids are extracted according to delta time between logs that has same User-ID.
 # AllPages: Logs contains image, redirected links and non-spages have been omitted.
 # FilteredPV: Final summarized page views table with added session-durations, unique-link-counts,link-counts
 # ###################################################################################
@@ -27,7 +27,7 @@ def create_file_names(repo_dir, ds_name, process_labels, extension):
 def main():
     repo_dir = 'Datasets/before_login_datasets/'  # Directory of dataset files
 
-    process_labels = ['CSV', 'NoBots', 'SF', 'USERS', 'SORTED', 'AllPages', 'SESSION', 'FilteredPV']
+    process_labels = ['CSV', 'NoBots', 'SF', 'UserIDs', 'Sorted', 'AllPages', 'SessionIDs', 'FilteredPV']
     data_set = 'u_extend15'  # name of data set
 
     file_names = create_file_names(repo_dir, data_set, process_labels, extension='.csv')
